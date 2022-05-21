@@ -1,0 +1,86 @@
+import pandas as pd
+import seaborn as sns
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.metrics import confusion_matrix, accuracy_score, classification_report
+from sklearn.metrics import roc_auc_score,roc_curve
+import matplotlib.pyplot as plt
+
+from sklearn.linear_model import LogisticRegression
+
+
+from warnings import filterwarnings
+filterwarnings('ignore')
+import os
+for dirname, _, filenames in os.walk('/kaggle/input'):
+    for filename in filenames:
+        print(os.path.join(dirname, filename))
+
+epicurious = pd.read_csv("./epi_r.csv")
+
+epicurious.head(2)
+
+epicurious.info(5)
+
+print(epicurious.describe().T)
+
+epicurious = epicurious[epicurious['calories'] < 10000].dropna()
+sns.set(style="darkgrid")
+g = sns.regplot(x="calories", y="dessert", data=epicurious, fit_reg=False)
+g.figure.set_size_inches(5, 5)
+
+dict_plt = {0:'calories',1:'protein',2:'fat',3:'sodium'}
+sns.set(font_scale=.7)
+fig, ax = plt.subplots(1,4, figsize=(10,3))
+for i in range(4):
+    sns.barplot(x='rating',y=dict_plt[i], data=epicurious, ax=ax[i], errwidth=1)
+    ax[i].set_title('rating by {}'.format(dict_plt[i]), size=15)
+    ax[i].set_ylabel('')
+
+epicurious = epicurious[:][:500]     
+epicurious.drop("title", inplace = True, axis=1)
+
+y = epicurious.dessert.values
+X = epicurious.drop(["dessert"], axis = 1)
+
+epicurious['dessert'].isnull().sum()
+plt.show()
+
+loj = LogisticRegression(solver = "liblinear")
+loj_model = loj.fit(X,y)
+loj_model
+
+loj_model.intercept_     
+loj_model.coef_          
+
+y_pred = loj_model.predict(X)        
+confusion_matrix(y, y_pred)          
+print(accuracy_score(y, y_pred))
+print(classification_report(y, y_pred))
+
+loj_model.predict(X)[0:20]
+
+loj_model.predict_proba(X)[0:10][:,0:2]
+
+y_probs = loj_model.predict_proba(X)
+y_probs = y_probs[:,1]
+y_probs[0:20]
+y_pred = [1 if i > 0.5 else 0 for i in y_probs]
+y_pred[0:20]
+
+confusion_matrix(y, y_pred)
+
+accuracy_score(y, y_pred)
+
+print(classification_report(y, y_pred))
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, 
+                                                    test_size = 0.30, 
+                                                    random_state = 42)
+
+loj = LogisticRegression(solver = "liblinear")
+loj_model = loj.fit(X_train,y_train)
+loj_model
+
+print("Точность модели = ", accuracy_score(y_test, loj_model.predict(X_test)))
+
+print("Валидация модели = ", cross_val_score(loj_model, X_test, y_test, cv = 10).mean())
